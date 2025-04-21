@@ -1,0 +1,500 @@
+-- Load Fluent UI Library and Addons
+local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
+local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"))()
+local InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/InterfaceManager.lua"))()
+
+-- Create main window
+local Window = Fluent:CreateWindow({
+    Title       = "Searedd TP & HBE",
+    SubTitle    = "by mashdee",
+    TabWidth    = 160,
+    Size        = UDim2.fromOffset(580, 460),
+    Acrylic     = true,
+    Theme       = "Aqua",
+    MinimizeKey = Enum.KeyCode.LeftControl,
+})
+
+-- Define tabs
+local Tabs = {
+    Hitbox       = Window:AddTab({ Title = "Hitbox Expander" }),
+    Ball         = Window:AddTab({ Title = "Ball Teleportation" }),
+    BallTPOthers = Window:AddTab({ Title = "Ball TP to Others" }),
+    Others       = Window:AddTab({ Title = "Others Hitbox" }),
+    Troll        = Window:AddTab({ Title = "Troll" }),
+    Misc         = Window:AddTab({ Title = "Misc" }),
+    JumpPower    = Window:AddTab({ Title = "JumpPower" }),
+    Info         = Window:AddTab({ Title = "Info" }),
+}
+
+-- Services
+local Players          = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local Workspace        = game:GetService("Workspace")
+local RunService       = game:GetService("RunService")
+local StarterGui       = game:GetService("StarterGui")
+
+-- Shared variables
+local newX, newY, newZ = 4.52, 5.73, 2.398
+local hitboxExpanded = false
+local originalSize
+local hitboxTransparency = 0.5
+local ballEnabled = false
+local ballTPOthersEnabled = false
+local targetUsernameOthers = ""
+local staminaEnabled = false
+local hideBallEnabled = false
+
+---------------------------------------------------
+-- Hitbox Expander Tab
+---------------------------------------------------
+Tabs.Hitbox:AddInput("HBE_X", { Title = "HBE X", Default = tostring(newX), Numeric = true, Callback = function(v)
+    local n = tonumber(v)
+    if n then newX = n
+        if hitboxExpanded then
+            local hb = Players.LocalPlayer.Character and Players.LocalPlayer.Character:FindFirstChild("Hitbox")
+            if hb then hb.Size = Vector3.new(newX, hb.Size.Y, hb.Size.Z) end
+        end
+    end
+end})
+
+Tabs.Hitbox:AddInput("HBE_Y", { Title = "HBE Y", Default = tostring(newY), Numeric = true, Callback = function(v)
+    local n = tonumber(v)
+    if n then newY = n
+        if hitboxExpanded then
+            local hb = Players.LocalPlayer.Character and Players.LocalPlayer.Character:FindFirstChild("Hitbox")
+            if hb then hb.Size = Vector3.new(hb.Size.X, newY, hb.Size.Z) end
+        end
+    end
+end})
+
+Tabs.Hitbox:AddInput("HBE_Z", { Title = "HBE Z", Default = tostring(newZ), Numeric = true, Callback = function(v)
+    local n = tonumber(v)
+    if n then newZ = n
+        if hitboxExpanded then
+            local hb = Players.LocalPlayer.Character and Players.LocalPlayer.Character:FindFirstChild("Hitbox")
+            if hb then hb.Size = Vector3.new(hb.Size.X, hb.Size.Y, newZ) end
+        end
+    end
+end})
+
+Tabs.Hitbox:AddToggle("HBE_Expand", { Title = "Hitbox Expander", Default = false, Callback = function(on)
+    local char = Players.LocalPlayer.Character
+    if not char then return end
+    local hb = char:FindFirstChild("Hitbox")
+    if not hb then return end
+    if on and not hitboxExpanded then
+        hitboxExpanded = true
+        originalSize = hb.Size
+        hb.Size = Vector3.new(newX, newY, newZ)
+        StarterGui:SetCore("SendNotification", {
+            Title = "Hitbox",
+            Text = "HBE Mode Activated",
+            Duration = 2
+        })
+    elseif not on and hitboxExpanded then
+        hitboxExpanded = false
+        if originalSize then hb.Size = originalSize end
+        StarterGui:SetCore("SendNotification", {
+            Title = "Hitbox",
+            Text = "HBE Mode Disabled",
+            Duration = 2
+        })
+    end
+end})
+
+Tabs.Hitbox:AddToggle("HBE_Show", { Title = "Show Hitbox", Default = false, Callback = function(on)
+    local char = Players.LocalPlayer.Character
+    if not char then return end
+    local hb = char:FindFirstChild("Hitbox")
+    if hb then hb.Transparency = on and hitboxTransparency or 1 end
+end})
+
+Tabs.Hitbox:AddInput("HBE_Transparency", { Title = "Transparency", Default = tostring(hitboxTransparency), Numeric = true, Callback = function(v)
+    local n = tonumber(v)
+    if n then
+        hitboxTransparency = n
+        local hb = Players.LocalPlayer.Character and Players.LocalPlayer.Character:FindFirstChild("Hitbox")
+        if hb and hb.Transparency < 1 then hb.Transparency = hitboxTransparency end
+    end
+end})
+
+local passiveX, passiveY, passiveZ = newX, newY, newZ
+local passiveEnabled = false
+local passiveMode = false
+
+Tabs.Hitbox:AddToggle("EnablePassive", { Title = "Enable Passive Hitbox", Default = false, Callback = function(on)
+    passiveEnabled = on
+    StarterGui:SetCore("SendNotification", {
+        Title = "Hitbox",
+        Text = on and "Passive Mode Enabled" or "Passive Mode Disabled",
+        Duration = 2
+    })
+end})
+
+Tabs.Hitbox:AddParagraph({ Title = "Passive Hitbox Settings", Content = "When enabled, press CapsLock to switch between Passive and Expanded sizes." })
+
+Tabs.Hitbox:AddInput("Passive_X", { Title = "Passive X", Default = tostring(passiveX), Numeric = true, Callback = function(v)
+    local n = tonumber(v)
+    if n then
+        passiveX = n
+        if passiveEnabled and passiveMode then
+            local hb = Players.LocalPlayer.Character and Players.LocalPlayer.Character:FindFirstChild("Hitbox")
+            if hb then hb.Size = Vector3.new(passiveX, hb.Size.Y, hb.Size.Z) end
+        end
+    end
+end})
+
+Tabs.Hitbox:AddInput("Passive_Y", { Title = "Passive Y", Default = tostring(passiveY), Numeric = true, Callback = function(v)
+    local n = tonumber(v)
+    if n then
+        passiveY = n
+        if passiveEnabled and passiveMode then
+            local hb = Players.LocalPlayer.Character and Players.LocalPlayer.Character:FindFirstChild("Hitbox")
+            if hb then hb.Size = Vector3.new(hb.Size.X, passiveY, hb.Size.Z) end
+        end
+    end
+end})
+
+Tabs.Hitbox:AddInput("Passive_Z", { Title = "Passive Z", Default = tostring(passiveZ), Numeric = true, Callback = function(v)
+    local n = tonumber(v)
+    if n then
+        passiveZ = n
+        if passiveEnabled and passiveMode then
+            local hb = Players.LocalPlayer.Character and Players.LocalPlayer.Character:FindFirstChild("Hitbox")
+            if hb then hb.Size = Vector3.new(hb.Size.X, hb.Size.Y, passiveZ) end
+        end
+    end
+end})
+
+Tabs.Hitbox:AddKeybind("ModeSwitch", { Title = "Switch Mode (CapsLock)", Mode = "Toggle", Default = "CapsLock", Callback = function(active)
+    if not passiveEnabled then return end
+    passiveMode = active
+    local hb = Players.LocalPlayer.Character and Players.LocalPlayer.Character:FindFirstChild("Hitbox")
+    if not hb then return end
+    if passiveMode then
+        hb.Size = Vector3.new(passiveX, passiveY, passiveZ)
+        StarterGui:SetCore("SendNotification", {
+            Title = "Hitbox",
+            Text = "Passive Hitbox Activated",
+            Duration = 2
+        })
+    else
+        if hitboxExpanded then
+            hb.Size = Vector3.new(newX, newY, newZ)
+            StarterGui:SetCore("SendNotification", {
+                Title = "Hitbox",
+                Text = "HBE Mode Activated",
+                Duration = 2
+            })
+        elseif originalSize then
+            hb.Size = originalSize
+        end
+    end
+end})
+
+---------------------------------------------------
+-- Ball Teleportation Tab
+---------------------------------------------------
+Tabs.Ball:AddToggle("BallTP", { 
+    Title = "Ball TP", 
+    Default = false, 
+    Callback = function(on)
+        ballEnabled = on
+    end 
+})
+
+Tabs.Ball:AddParagraph({ Title = "Info", Content = "Enable then press B to teleport ball" })
+
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if not gameProcessed and input.KeyCode == Enum.KeyCode.B and ballEnabled then
+        local ball = Workspace.Junk and Workspace.Junk:FindFirstChild("Football")
+        local root = Players.LocalPlayer.Character and Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if ball and root then
+            ball.Velocity = Vector3.zero
+            ball.CFrame = root.CFrame + Vector3.new(0, -3, 0)
+        end
+    end
+end)
+
+---------------------------------------------------
+-- Ball TP to Others Tab
+---------------------------------------------------
+Tabs.BallTPOthers:AddToggle("BallTPOthersToggle", {
+    Title = "Enable Ball TP to Others",
+    Default = false,
+    Callback = function(on)
+        ballTPOthersEnabled = on
+    end
+})
+
+Tabs.BallTPOthers:AddInput("TargetUsernameOthers", {
+    Title = "Target Username",
+    Default = "",
+    Callback = function(v)
+        targetUsernameOthers = v
+    end
+})
+
+Tabs.BallTPOthers:AddParagraph({
+    Title = "Info",
+    Content = "Enable and enter username. Press F to teleport"
+})
+
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    
+    if input.KeyCode == Enum.KeyCode.F then
+        if ballTPOthersEnabled and targetUsernameOthers ~= "" then
+            local target
+            for _, player in ipairs(Players:GetPlayers()) do
+                if player.Name:lower() == targetUsernameOthers:lower() then
+                    target = player
+                    break
+                end
+            end
+            
+            if target and target.Character then
+                local root = target.Character:FindFirstChild("HumanoidRootPart")
+                local ball = Workspace.Junk and Workspace.Junk:FindFirstChild("Football")
+                if root and ball then
+                    ball.Velocity = Vector3.zero
+                    ball.CFrame = root.CFrame + Vector3.new(0, -1, 0)
+                end
+            end
+        end
+    end
+end)
+
+---------------------------------------------------
+-- Troll Tab
+---------------------------------------------------
+Tabs.Troll:AddToggle("HideBallToggle", {
+    Title = "Hide Ball",
+    Default = false,
+    Callback = function(on)
+        hideBallEnabled = on
+    end
+})
+
+Tabs.Troll:AddParagraph({
+    Title = "How to Use",
+    Content = "1. Enable toggle\n2. Shoot ball normally\n3. Press T to hide"
+})
+
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    
+    if input.KeyCode == Enum.KeyCode.T then
+        if hideBallEnabled then
+            local ball = Workspace.Junk and Workspace.Junk:FindFirstChild("Football")
+            if ball then
+                ball.Velocity = Vector3.new(-500, 500, 0)
+                ball.CFrame = ball.CFrame + Vector3.new(0, 100, 0)
+            end
+        end
+    end
+end)
+
+---------------------------------------------------
+-- Others Hitbox Tab
+---------------------------------------------------
+local othersHitboxEnabled = false
+local seeAllOthers = false
+local seeTargetOnly = false
+local targetUsername = ""
+local target_X, target_Y, target_Z = 4.5, 5.5, 2.4
+
+Tabs.Others:AddToggle("EnableOthersHBE", { Title = "Enable Others Hitboxes", Default = false, Callback = function(on)
+    othersHitboxEnabled = on
+    if on and targetUsername ~= "" then
+        local pl = Players:FindFirstChild(targetUsername)
+        if pl and pl.Character then
+            local hb = pl.Character:FindFirstChild("Hitbox")
+            if hb then hb.Size = Vector3.new(target_X, target_Y, target_Z) end
+        end
+    end
+end})
+
+Tabs.Others:AddToggle("ShowAllOthers", { Title = "Show All Others' Hitboxes", Default = false, Callback = function(on)
+    seeAllOthers = on
+    for _, pl in ipairs(Players:GetPlayers()) do
+        if pl ~= Players.LocalPlayer and pl.Character then
+            local hb = pl.Character:FindFirstChild("Hitbox")
+            if hb then hb.Transparency = on and hitboxTransparency or 1 end
+        end
+    end
+end})
+
+Tabs.Others:AddToggle("ShowTargetOnly", { Title = "Show Target's Hitbox", Default = false, Callback = function(on)
+    seeTargetOnly = on
+    for _, pl in ipairs(Players:GetPlayers()) do
+        if pl.Name:lower() == targetUsername:lower() and pl.Character then
+            local hb = pl.Character:FindFirstChild("Hitbox")
+            if hb then hb.Transparency = on and hitboxTransparency or 1 end
+        end
+    end
+end})
+
+Tabs.Others:AddInput("TargetUsername", { Title = "Target Username", Default = "", Callback = function(v)
+    targetUsername = v
+end})
+
+local function tryApplyToTarget()
+    if othersHitboxEnabled and targetUsername ~= "" then
+        local pl = Players:FindFirstChild(targetUsername)
+        if pl and pl.Character then
+            local hb = pl.Character:FindFirstChild("Hitbox")
+            if hb then hb.Size = Vector3.new(target_X, target_Y, target_Z) end
+        end
+    end
+end
+
+Tabs.Others:AddInput("Others_X", { Title = "Others X", Default = tostring(target_X), Numeric = true, Callback = function(v)
+    local n = tonumber(v)
+    if n then target_X = n; tryApplyToTarget() end
+end})
+
+Tabs.Others:AddInput("Others_Y", { Title = "Others Y", Default = tostring(target_Y), Numeric = true, Callback = function(v)
+    local n = tonumber(v)
+    if n then target_Y = n; tryApplyToTarget() end
+end})
+
+Tabs.Others:AddInput("Others_Z", { Title = "Others Z", Default = tostring(target_Z), Numeric = true, Callback = function(v)
+    local n = tonumber(v)
+    if n then target_Z = n; tryApplyToTarget() end
+end})
+
+Tabs.Others:AddButton({ Title = "Apply Target Hitbox", Callback = function()
+    if not othersHitboxEnabled then return end
+    local pl = Players:FindFirstChild(targetUsername)
+    if pl and pl.Character then
+        local hb = pl.Character:FindFirstChild("Hitbox")
+        if hb then
+            hb.Size = Vector3.new(target_X, target_Y, target_Z)
+            hb.CanCollide = true
+            hb.Touched:Connect(function(part)
+                if part == Workspace.Junk.Football then
+                    part.Velocity = Vector3.zero
+                    part.CFrame = hb.CFrame
+                end
+            end)
+        end
+    end
+end})
+
+---------------------------------------------------
+-- JumpPower Tab
+---------------------------------------------------
+local jumpPowerEnabled = false
+local customJumpPower = 50
+local originalJumpPower = 50
+
+Tabs.JumpPower:AddToggle("JumpToggle", {
+    Title = "Enable Custom Jump Power",
+    Default = false,
+    Callback = function(enabled)
+        jumpPowerEnabled = enabled
+        local humanoid = Players.LocalPlayer.Character and Players.LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+        if humanoid then
+            if enabled then
+                originalJumpPower = humanoid.JumpPower
+                humanoid.JumpPower = customJumpPower
+            else
+                humanoid.JumpPower = originalJumpPower
+            end
+        end
+    end
+})
+
+Tabs.JumpPower:AddInput("JumpInput", {
+    Title = "Jump Power Value",
+    Default = "50",
+    Numeric = true,
+    Callback = function(value)
+        local num = tonumber(value)
+        if num then
+            customJumpPower = num
+            if jumpPowerEnabled then
+                local humanoid = Players.LocalPlayer.Character and Players.LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+                if humanoid then
+                    humanoid.JumpPower = customJumpPower
+                end
+            end
+        end
+    end
+})
+
+---------------------------------------------------
+-- Misc Tab
+---------------------------------------------------
+local SPRINT_SPEED = 28
+local JUMP_POWER = 50
+local player = Players.LocalPlayer
+local humanoid = nil
+
+RunService.RenderStepped:Connect(function()
+    if player.Character then
+        humanoid = player.Character:FindFirstChildOfClass("Humanoid")
+    end
+end)
+
+local staminaToggle = Tabs.Misc:AddToggle("InfStamina", {
+    Title   = "Infinite Stamina + Jump",
+    Default = false,
+    Callback = function(val)
+        staminaEnabled = val
+        StarterGui:SetCore("SendNotification", {
+            Title = "Stamina",
+            Text = val and "✅ Infinite Stamina Enabled" or "❌ Infinite Stamina Disabled",
+            Duration = 2
+        })
+    end
+})
+
+local function hasBall()
+    local junk = Workspace:FindFirstChild("Junk")
+    local ball = junk and junk:FindFirstChild("Football")
+    if not ball then return false end
+    for _, weld in ipairs(ball:GetDescendants()) do
+        if (weld:IsA("Weld") or weld:IsA("Motor6D")) and weld.Part1 and weld.Part1:IsDescendantOf(player.Character) then
+            return true
+        end
+    end
+    return false
+end
+
+RunService.RenderStepped:Connect(function()
+    if not staminaEnabled or not humanoid or hasBall() then return end
+    humanoid.WalkSpeed    = SPRINT_SPEED
+    humanoid.JumpPower    = JUMP_POWER
+    humanoid.UseJumpPower = true
+end)
+
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.KeyCode == Enum.KeyCode.V then
+        staminaEnabled = not staminaEnabled
+        staminaToggle:SetValue(staminaEnabled)
+    end
+end)
+
+---------------------------------------------------
+-- Info Tab
+---------------------------------------------------
+Tabs.Info:AddParagraph({
+    Title   = "Info",
+    Content = [[
+LeftCtrl to minimize
+B - Ball TP to self
+F - Ball TP to others
+V - Toggle Stamina
+T - Hide Ball (Troll tab)
+]]
+})
+
+Window:SelectTab(1)
+SaveManager:SetLibrary(Fluent)
+InterfaceManager:SetLibrary(Fluent)
+SaveManager:BuildConfigSection(Tabs.Info)
+InterfaceManager:BuildInterfaceSection(Tabs.Info)
+SaveManager:LoadAutoloadConfig()
